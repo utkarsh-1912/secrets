@@ -1,9 +1,10 @@
 //jshint esversion:12
 
+require('dotenv').config();
 const express = require('express');
 const ejs = require('ejs');
-const bodyParser = require('body-parser')
-const mongoose = require('mongoose')
+const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
 const encrypt = require('mongoose-encryption');
 
 const app = express();
@@ -15,6 +16,11 @@ app.use(express.static("public"));
 mongoose.connect("mongodb://localhost:27017/userAuthDB",{useNewUrlParser: true});
 
 
+// ============== Secrets Schema =======================
+const Secret_text_schema = mongoose.Schema({
+    text : String
+})
+const secret_text = mongoose.model('SText',Secret_text_schema);
 //=============== L1 - Basic Auth ====================== 
 
 // const userSchema = mongoose.Schema({
@@ -24,6 +30,7 @@ mongoose.connect("mongodb://localhost:27017/userAuthDB",{useNewUrlParser: true})
 //        max : (10 , 'Maximum Password length is 10'),
 //        min : (2 , 'Minimum Password length is 2')
 //    }
+//    secrets : [secret_text_schema] 
 // })
 
 // ============= L2 - AES Encryption ===================
@@ -34,11 +41,11 @@ const userSchema = new mongoose.Schema({
                type : String ,
                max : (10 , 'Maximum Password length is 10'),
                min : (2 , 'Minimum Password length is 2')
-           }
+    },
+    secrets : [Secret_text_schema] 
 });
 
-const secret ="UtkristiEncryptionSecret";
-userSchema.plugin(encrypt ,{secret : secret , encryptedFields :['password']});  // Add plugin before creating collection 
+userSchema.plugin(encrypt ,{secret : process.env.SECRET , encryptedFields :['password']});  // Add plugin before creating collection 
 
 const userAuth = mongoose.model("userAuth",userSchema);
 
@@ -56,6 +63,10 @@ app.get('/register',(req,res)=>{
 app.get('/logout',(req,res)=>{
     res.redirect('/');
 })
+app.get('/submit',(req,res)=>{
+    res.render('submit');
+});
+
 
 app.post('/register',(req,res)=>{
     const Email = req.body.username;
@@ -77,7 +88,7 @@ app.post('/login',(req,res)=>{
     userAuth.findOne({email : Email} , (err,result)=>{
         if(!err){
             if(result.password === Password)
-            {res.render('secrets');}else{
+            {res.render('secrets',{secrets :result.secrets});}else{
                 console.log('Password is Incorrect');
             }
         }
@@ -88,6 +99,14 @@ app.post('/login',(req,res)=>{
     })
 })
 
+app.post('/submit',(req,res)=>{
+    const SText = req.body.secret;
+    const newSecret = new secret_text({
+        text : SText
+    });
+    newSecret.save();
+    res.render('secrets',{secrets : []});
+})
 app.listen(process.env.POST||315,(error)=>{
     if(error){console.log(error);}else{
         console.log("Running at Port : 315");
