@@ -4,6 +4,7 @@ const express = require('express');
 const ejs = require('ejs');
 const bodyParser = require('body-parser')
 const mongoose = require('mongoose')
+const encrypt = require('mongoose-encryption');
 
 const app = express();
 
@@ -13,14 +14,31 @@ app.use(express.static("public"));
 
 mongoose.connect("mongodb://localhost:27017/userAuthDB",{useNewUrlParser: true});
 
-const userSchema = mongoose.Schema({
-   email : String,
-   password : {
-       type : String ,
-       max : (10 , 'Maximum Password length is 10'),
-       min : (2 , 'Minimum Password length is 2')
-   }
-})
+
+//=============== L1 - Basic Auth ====================== 
+
+// const userSchema = mongoose.Schema({
+//    email : String,
+//    password : {
+//        type : String ,
+//        max : (10 , 'Maximum Password length is 10'),
+//        min : (2 , 'Minimum Password length is 2')
+//    }
+// })
+
+// ============= L2 - AES Encryption ===================
+
+const userSchema = new mongoose.Schema({
+    email : String ,
+    password : {
+               type : String ,
+               max : (10 , 'Maximum Password length is 10'),
+               min : (2 , 'Minimum Password length is 2')
+           }
+});
+
+const secret ="UtkristiEncryptionSecret";
+userSchema.plugin(encrypt ,{secret : secret , encryptedFields :['password']});  // Add plugin before creating collection 
 
 const userAuth = mongoose.model("userAuth",userSchema);
 
@@ -65,6 +83,7 @@ app.post('/login',(req,res)=>{
         }
         else{
             console.log(err);
+
         }
     })
 })
