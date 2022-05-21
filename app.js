@@ -176,10 +176,13 @@ app.get('/register',(req,res)=>{
     res.render('register');
 })
 app.get('/submit',(req,res)=>{
-    res.render('submit');
+    if(req.isAuthenticated()){res.render('submit');}
+    else{res.redirect('/login')}; 
 });
 app.get('/secrets',(req,res)=>{
-    if(req.isAuthenticated()){res.render('secrets');}
+    if(req.isAuthenticated()){
+        console.log(req.user.secrets);
+        res.render('secrets',{secret : req.user.secrets});}
     else{res.redirect('/login')};
 })
 
@@ -190,6 +193,19 @@ req.logout((err)=>{
     }});
 });
 
+app.post('/submit',(req,res)=>{
+    const SecretText = req.body.secret;
+    userAuth.findOne({_id:req.user._id},(err,result)=>{
+        if(!err){
+            const newSecret = new secret_text({
+                text:SecretText
+            })
+            result.secrets.push(newSecret);
+            result.save();
+            res.redirect('/secrets');
+        }
+    })
+})
 app.post('/register',(req,res)=>{
     const Email = req.body.username;
     const Password = req.body.password;
@@ -288,7 +304,7 @@ app.post('/submit',(req,res)=>{
         text : SText
     });
     newSecret.save();
-    res.render('secrets',{secrets : []});
+    res.render('secrets',{secret : req.user.secrets});
 })
 
 

@@ -7,7 +7,7 @@ body {
 }
 
 .centered {
-    padding-top: 200px;
+    padding-top: 125px;
     text-align: center;
 }
 
@@ -40,4 +40,31 @@ i{
 .btn-sp-auth.f:hover{
    transform: scale(1.05);
    background-color: rgba(27, 97, 236, 0.823);
+}
+.row{
+  display:flex;
+}
+i.fa-facebook{
+  transform: scale(1.4);
+}
+@media (max-width:700px) {
+  .row{
+    flex-direction: column;
+  }
+}
+.footer {
+	position: absolute;
+	text-align: center;
+    align-items: center;
+  bottom: 0;
+	width: 100%;
+	height: 60px;
+	background-color: #000000;
+}
+
+.footer p {
+    padding: 18px;
+	font-size: 16px;
+    color: #fff;
+    font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif
 }
