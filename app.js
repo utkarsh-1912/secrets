@@ -12,7 +12,9 @@ const saltRounds =7;  // Number of rounds for hashing via salting
 const session = require('express-session');  // Adding sessions to the page
 const passport = require('passport');
 const passportLocalMongoose = require('passport-local-mongoose');
-
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+var FacebookStrategy = require('passport-facebook');
+const findOrCreate = require('mongoose-findorcreate')
 
 const app = express();
 
@@ -27,6 +29,7 @@ app.use(session({      //Initilising session
 }))
 app.use(passport.initialize());  // initilising PASSPORT
 app.use(passport.session());     // using Initilised session
+
 
 mongoose.connect("mongodb://localhost:27017/userAuthDB",{useNewUrlParser: true});
 
@@ -94,17 +97,73 @@ const userSchema = new mongoose.Schema({
                max : (10 , 'Maximum Password length is 10'),
                min : (2 , 'Minimum Password length is 2')
     },
+    googleId:String,
+    facebookId:String,
     secrets : [Secret_text_schema] 
 });
 
 userSchema.plugin(passportLocalMongoose);
+userSchema.plugin(findOrCreate);
 
 const userAuth = mongoose.model("userAuth",userSchema);
 passport.use(userAuth.createStrategy());
-passport.serializeUser(userAuth.serializeUser());  // to add user identification throughout session
-passport.deserializeUser(userAuth.deserializeUser()); // to remove user identification
+// passport.serializeUser(userAuth.serializeUser());  // to add user identification throughout session
+// passport.deserializeUser(userAuth.deserializeUser()); // to remove user identification
+passport.serializeUser((user,done)=>{
+    done(null,user.id);
+});
+passport.deserializeUser((id,done)=>{
+    userAuth.findById(id,(err,user)=>{
+        done(err,user);
+    });
+});
+//========= Google Auth==========
+passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: "http://localhost:315/auth/google/secrets",
+    userProfileURL:"https://www.googleapis.com/oauth2/v3/userinfo"  
+},
+  function(accessToken, refreshToken, profile, cb) {
+    console.log(profile);
+    userAuth.findOrCreate({ googleId: profile.id }, function (err, user) {
+      return cb(err, user);
+    });
+  }
+));
 
+//==== google route =====
+app.get('/auth/google',
+    passport.authenticate('google',{scope:['profile']})
+)
+app.get('/auth/google/secrets',passport.authenticate('google',{failureRedirect:'/login'}),
+(req,res)=>{
+    res.redirect('/secrets');
+})
 
+// ===== facebook Auth ====
+passport.use(new FacebookStrategy({
+    clientID: process.env.FACEBOOK_APP_ID,
+    clientSecret: process.env.FACEBOOK_APP_SECRET,
+    callbackURL: "http://localhost:315/auth/facebook/secrets"
+  },
+  function(accessToken, refreshToken, profile, cb) {
+    console.log(profile);
+    userAuth.findOrCreate({ facebookId: profile.id }, function (err, user) {
+      return cb(err, user);
+    });
+  }
+));
+
+app.get('/auth/facebook',
+  passport.authenticate('facebook'));
+
+app.get('/auth/facebook/secrets',
+  passport.authenticate('facebook', { failureRedirect: '/login' }),
+  function(req, res) {
+    res.redirect('/secrets');
+  });
+// =========== Routes =====================
 app.get('/',(req,res)=>{
     res.render('home');
 })
