@@ -1,11 +1,14 @@
 //jshint esversion:12
 
-require('dotenv').config();
+require('dotenv').config();  // fot creating and using env var
 const express = require('express');
 const ejs = require('ejs');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
-const encrypt = require('mongoose-encryption');
+const encrypt = require('mongoose-encryption');  // for encryption
+const md5 = require('md5');
+const bcrypt = require('bcrypt');
+const saltRounds =7;  // Number of rounds for hashing via salting
 
 const app = express();
 
@@ -29,23 +32,48 @@ const secret_text = mongoose.model('SText',Secret_text_schema);
 //        type : String ,
 //        max : (10 , 'Maximum Password length is 10'),
 //        min : (2 , 'Minimum Password length is 2')
-//    }
-//    secrets : [secret_text_schema] 
+//    },
+//    secrets : [Secret_text_schema] 
 // })
 
 // ============= L2 - AES Encryption ===================
 
-const userSchema = new mongoose.Schema({
-    email : String ,
+// const userSchema = new mongoose.Schema({
+//     email : String ,
+//     password : {
+//                type : String ,
+//                max : (10 , 'Maximum Password length is 10'),
+//                min : (2 , 'Minimum Password length is 2')
+//     },
+//     secrets : [Secret_text_schema] 
+// });
+
+// userSchema.plugin(encrypt ,{secret : process.env.SECRET , encryptedFields :['password']});  // Add plugin before creating collection 
+
+// ============= L3 - Hashing ==========================
+
+// const userSchema = mongoose.Schema({
+//        email : String,
+//        password : {
+//            type : String ,
+//            max : (10 , 'Maximum Password length is 10'),
+//            min : (2 , 'Minimum Password length is 2')
+//        },
+//        secrets : [Secret_text_schema] 
+//     })
+
+// ============ L4 - Salting with hashing ==============
+
+const userSchema = mongoose.Schema({
+    email : String,
     password : {
-               type : String ,
-               max : (10 , 'Maximum Password length is 10'),
-               min : (2 , 'Minimum Password length is 2')
+        type : String ,
+        max : (10 , 'Maximum Password length is 10'),
+        min : (2 , 'Minimum Password length is 2')
     },
     secrets : [Secret_text_schema] 
-});
+ })
 
-userSchema.plugin(encrypt ,{secret : process.env.SECRET , encryptedFields :['password']});  // Add plugin before creating collection 
 
 const userAuth = mongoose.model("userAuth",userSchema);
 
@@ -70,25 +98,45 @@ app.get('/submit',(req,res)=>{
 
 app.post('/register',(req,res)=>{
     const Email = req.body.username;
+    // const Password = md5(req.body.password);
     const Password = req.body.password;
-    
-    const newUser = new userAuth({
-        email : Email ,
-        password : Password
+    bcrypt.hash(Password,saltRounds,(error,hash)=>{
+        if(!error){const newUser = new userAuth({
+            email : Email ,
+            password : hash
+        })
+        newUser.save((err)=>{
+            if(!err){res.render('secrets'),{secrets :[]}}; 
+        });}
     })
-    newUser.save((err)=>{
-        if(!err){res.render('secrets')}; 
-    });
+    // const newUser = new userAuth({
+    //     email : Email ,
+    //     password : saltPassword
+    // })
+    // newUser.save((err)=>{
+    //     if(!err){res.render('secrets'),{secrets :[]}}; 
+    // });
 })
 
 app.post('/login',(req,res)=>{
     const Email = req.body.username;
+    // const Password = md5(req.body.password);
     const Password = req.body.password;
 
     userAuth.findOne({email : Email} , (err,result)=>{
         if(!err){
-            if(result.password === Password)
-            {res.render('secrets',{secrets :result.secrets});}else{
+            // if(result.password === Password)
+            // {res.render('secrets');}else{
+            //     console.log('Password is Incorrect');
+            //     console.log(Password);
+            //     console.log(result.password)
+            // }
+            if(result)
+            {bcrypt.compare(Password,result.password,function(err,BcryptRes){
+                if(BcryptRes===true){
+                    res.render('secrets');
+                }
+            })}else{
                 console.log('Password is Incorrect');
             }
         }
@@ -107,6 +155,8 @@ app.post('/submit',(req,res)=>{
     newSecret.save();
     res.render('secrets',{secrets : []});
 })
+
+
 app.listen(process.env.POST||315,(error)=>{
     if(error){console.log(error);}else{
         console.log("Running at Port : 315");
