@@ -1,6 +1,7 @@
 
 body {
   background-color: rgb(120, 186, 247);
+  /* background-color: #fff; */
   align-items: center;
   justify-content: center;
 }
@@ -18,5 +19,6 @@ body {
 }
 .jumbotron{
   background-color: rgb(120, 186, 247);
+  /* background-color: #fff; */
   align-items: center;
 }
