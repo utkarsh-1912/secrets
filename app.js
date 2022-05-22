@@ -308,7 +308,7 @@ app.post('/submit',(req,res)=>{
 })
 
 
-app.listen(process.env.POST||315,(error)=>{
+app.listen(process.env.PORT||315,(error)=>{
     if(error){console.log(error);}else{
         console.log("Running at Port : 315");
     }
